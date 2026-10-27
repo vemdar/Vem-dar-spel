@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vem är det?</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f0ff;
+  color: #292344;
+}
+header {
+  background: #7357d9;
+  color: white;
+  text-align: center;
+  padding: 25px;
+}
+main { max-width: 900px; margin: auto; padding: 16px; }
+button, .upload {
+  display: inline-block;
+  background: #7357d9;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 5px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.card {
+  background: white;
+  border: 3px solid transparent;
+  border-radius: 13px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+}
+.card img, .emoji {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.emoji {
+  display: grid;
+  place-items: center;
+  background: #eee8ff;
+  font-size: 55px;
+}
+.card.out { opacity: .35; }
+.card.out::after {
+  content: "UTSLAGEN ✕";
+  position: absolute;
+  top: 45%;
+  left: 5%;
+  width: 90%;
+  background: #d34b66;
+  color: white;
+  padding: 5px 0;
+  transform: rotate(-7deg);
+}
+.card strong { display: block; padding: 8px 0; overflow-wrap: anywhere; }
+input { max-width: 100%; }
+#status {
+  background: white;
+  padding: 14px;
+  margin: 15px 0;
+  border-radius: 12px;
+}
+@media(max-width:450px) {
+  .board { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🕵️ Vem är det?</h1>
+  <p>Ditt eget spel med dina egna bilder!</p>
+</header>
+<main>
+  <h2>Skapa ditt spelbräde</h2>
+  <label class="upload">
+    📸 Lägg till bilder
+    <input id="files" type="file" accept="image/*" multiple hidden>
+  </label>
+  <button onclick="chooseSecret()">⭐ Välj hemlig figur</button>
+  <button onclick="resetGame()">🔄 Börja om</button>
+  <div id="status">Lägg till bilder eller prova figurerna nedan.</div>
+  <div id="board" class="board"></div>
+</main>
+<script>
+let nextId = 9;
+let secretMode = false;
+let secretId = null;
+
+let people = [
+  ["Alice","👩🏻‍🦰"], ["Alex","👨🏽"],
+  ["Sam","👩🏾"], ["Kim","👨🏻‍🦱"],
+  ["Charlie","👩🏼‍🦱"], ["Robin","🧔🏻"],
+  ["Taylor","👩🏿"], ["Jamie","👨🏼"]
+].map((p,i)=>({
+  id:i+1, name:p[0], emoji:p[1], out:false
+}));
+
+function render() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  people.forEach(person => {
+    const card = document.createElement("div");
+    card.className = "card" + (person.out ? " out" : "");
+    if (person.id === secretId) card.style.borderColor = "#7357d9";
+
+    if (person.image) {
+      const img = document.createElement("img");
+      img.src = person.image;
+      img.alt = person.name;
+      card.append(img);
+    } else {
+      const emoji = document.createElement("div");
+      emoji.className = "emoji";
+      emoji.textContent = person.emoji;
+      card.append(emoji);
+    }
+
+    const name = document.createElement("strong");
+    name.textContent = person.name;
+    card.append(name);
+
+    card.onclick = () => {
+      if (secretMode) {
+        secretId = person.id;
+        secretMode = false;
+        document.getElementById("status").textContent =
+          "Din hemliga figur är vald!";
+      } else {
+        person.out = !person.out;
+      }
+      render();
+    };
+    board.append(card);
+  });
+}
+
+function chooseSecret() {
+  secretMode = true;
+  document.getElementById("status").textContent =
+    "Klicka på figuren du vill välja i hemlighet.";
+}
+
+function resetGame() {
+  people.forEach(p => p.out = false);
+  secretId = null;
+  secretMode = false;
+  document.getElementById("status").textContent =
+    "Spelet är återställt!";
+  render();
+}
+
+document.getElementById("files").onchange = async event => {
+  for (const file of event.target.files) {
+    if (!file.type.startsWith("image/")) continue;
+    const image = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+    const suggested = file.name.replace(/\.[^.]+$/, "");
+    const name = prompt("Vad ska figuren heta?", suggested);
+    if (name === null) continue;
+    people.push({
+      id:nextId++, name:name.trim() || suggested,
+      image, out:false
+    });
+  }
+  event.target.value = "";
+  render();
+};
+
+render();
+</script>
+</body>
+</html>
